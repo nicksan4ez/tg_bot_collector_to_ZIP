@@ -1,0 +1,86 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtualenv
+.env
+.venv
+venv/
+ENV/
+env/
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+
+# PyCharm
+.idea/
+*.iml
+
+# VS Code
+.vscode/
+
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db
+
+# dotenv
+.env
+
+# Temporary media and output folders used by the bot
+telegram_bot_media/
+tmp/
+
+# Logs
+*.log
+
+# Python local env config
+python-env/
+
+# Editor temporary files
+*~
+*.swp
+
+# Lock files
+poetry.lock
+Pipfile.lock
+
+# Others
+coverage/
+
+
