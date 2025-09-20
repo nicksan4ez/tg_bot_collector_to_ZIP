@@ -1,0 +1,9 @@
+﻿services:
+  bot:
+    build: .
+    image: tg-archive-bot:latest
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      - ./logs:/app/logs
+      - ./temp:/app/temp
