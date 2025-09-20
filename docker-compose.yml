@@ -1,5 +1,5 @@
 ﻿services:
-  bot:
+  tg_bot_collector_to_ZIP:
     build: .
     image: tg-archive-bot:latest
     restart: unless-stopped
