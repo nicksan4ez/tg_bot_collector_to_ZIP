@@ -38,15 +38,6 @@ docker compose up -d --build
 
 Команда соберёт образ и поднимет сервис `tg_bot_collector_to_ZIP` с политикой перезапуска `unless-stopped`. Логи попадают в `logs/bot.log`, временные файлы — в `temp/`.
 
-### Обновление на сервере (Git + Docker Compose)
-1. На локальной машине закоммитьте изменения и выполните `git push`.
-2. На VDS:
-   ```bash
-   cd ~/tg-bot
-   git pull
-   docker compose up -d --build
-   ```
-   Compose пересоберёт образ и перезапустит сервис без дополнительных команд.
 
 ## Структура проекта
 
