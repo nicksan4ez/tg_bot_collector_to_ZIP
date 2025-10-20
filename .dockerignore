@@ -2,6 +2,7 @@ __pycache__/
 *.pyc
 *.pyo
 *.pyd
+<<<<<<< HEAD
 .venv/
 venv/
 *.sqlite3
@@ -11,3 +12,9 @@ telegram_bot_media/
 .idea/
 .DS_Store
 
+=======
+.env
+logs/
+.tmp/
+.temp/
+>>>>>>> bba2b88fb528a473ace533b0d53555aa4b2525a4

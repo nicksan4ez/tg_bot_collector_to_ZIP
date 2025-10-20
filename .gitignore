@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -84,3 +85,11 @@ Pipfile.lock
 coverage/
 
 
+=======
+﻿.venv/
+__pycache__/
+*.pyc
+.env
+logs/
+temp/
+>>>>>>> bba2b88fb528a473ace533b0d53555aa4b2525a4

@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 version: '3.8'
 services:
   monitorbot:
@@ -12,3 +13,14 @@ services:
       - ./data:/data
     restart: unless-stopped
 
+=======
+﻿services:
+  tg_bot_collector_to_ZIP:
+    build: .
+    image: tg-archive-bot:latest
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      - ./logs:/app/logs
+      - ./temp:/app/temp
+>>>>>>> bba2b88fb528a473ace533b0d53555aa4b2525a4

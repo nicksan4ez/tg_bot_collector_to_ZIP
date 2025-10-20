@@ -1,5 +1,6 @@
 FROM python:3.11-slim
 
+<<<<<<< HEAD
 # Рабочая директория
 WORKDIR /app
 
@@ -27,3 +28,16 @@ USER bot
 # Запуск
 CMD ["python", "bot.py"]
 
+=======
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
+WORKDIR /app
+
+COPY requirements.txt ./
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY . ./
+
+CMD ["python", "main.py"]
+>>>>>>> bba2b88fb528a473ace533b0d53555aa4b2525a4
