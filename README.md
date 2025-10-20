@@ -23,7 +23,7 @@ TG_as_file_bot
 2. Создать виртуальное окружение и активировать его.
 3. Установить зависимости:
 
-    pip install -r requirenments.txt
+    pip install -r requirements.txt
 
 Конфигурация (.env)
 -------------------

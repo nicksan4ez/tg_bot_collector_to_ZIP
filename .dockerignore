@@ -1,0 +1,13 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+venv/
+*.sqlite3
+data/
+telegram_bot_media/
+.git/
+.idea/
+.DS_Store
+

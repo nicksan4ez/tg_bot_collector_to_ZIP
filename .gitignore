@@ -60,7 +60,7 @@ coverage.xml
 Thumbs.db
 
 # dotenv
-.env
+# .env
 
 # Temporary media and output folders used by the bot
 telegram_bot_media/

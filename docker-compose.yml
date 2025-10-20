@@ -1,0 +1,14 @@
+version: '3.8'
+services:
+  monitorbot:
+    build: .
+    env_file:
+      - .env
+    environment:
+      - TMP_ROOT=/data/tmp
+      - ZIP_NAME=${ZIP_NAME:-Monitor.zip}
+      - ARCHIVE_DELAY=${ARCHIVE_DELAY:-5}
+    volumes:
+      - ./data:/data
+    restart: unless-stopped
+
