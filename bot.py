@@ -8,7 +8,7 @@ import zipfile
 import shutil
 import time
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 
 from dotenv import load_dotenv
 from telegram import Update, InputFile
@@ -23,10 +23,11 @@ logger = logging.getLogger(__name__)
 load_dotenv()
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 ALLOWED_USERS = os.getenv("ALLOWED_USERS", "")
-TMP_ROOT_ENV = os.getenv("TMP_ROOT", "tmp")
+TMP_ROOT_ENV = os.getenv("TMP_ROOT", "telegram_bot_media")
 ZIP_NAME = os.getenv("ZIP_NAME", "Monitor.zip")
 # support both ARCHIVE_DELAY and legacy DEBOUNCE_SECONDS env var
 ARCHIVE_DELAY = float(os.getenv("ARCHIVE_DELAY", os.getenv("DEBOUNCE_SECONDS", "5")))
+VIDEO_EXTS = {".mp4", ".mov", ".mkv", ".avi", ".webm", ".m4v", ".mpeg", ".mpg", ".ogv"}
 
 if not BOT_TOKEN:
     raise SystemExit("BOT_TOKEN required in .env")
@@ -48,7 +49,8 @@ class UserState:
         self.in_progress = 0
         self.last_ts = 0.0
         self.lock = asyncio.Lock()
-        self.finalize_task: asyncio.Task | None = None
+        # Use Optional for Python 3.9 compatibility
+        self.finalize_task: Optional[asyncio.Task] = None
 
 USER_STATES: dict[int, UserState] = {}
 
@@ -133,7 +135,12 @@ async def handle_media(update: Update, context: ContextTypes.DEFAULT_TYPE):
             if not ext:
                 ext = _mime_to_ext(getattr(media, "mime_type", "") or "")
 
-            raw_name = msg.caption or media_file_name or "file"
+            ext_lower = ext.lower()
+            mime = getattr(media, "mime_type", "") or ""
+            if media_file_name and (mime.startswith("video/") or ext_lower in VIDEO_EXTS):
+                raw_name = media_file_name
+            else:
+                raw_name = msg.caption or media_file_name or "file"
             safe_base = sanitize_preserve_visual(raw_name)
             # ensure we append extension if known and not already present
             if ext and not safe_base.lower().endswith(ext.lower()):
