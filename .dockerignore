@@ -2,19 +2,20 @@ __pycache__/
 *.pyc
 *.pyo
 *.pyd
-<<<<<<< HEAD
+*.log
+
+.git/
+.github/
+.idea/
+.vscode/
+
+.env
 .venv/
 venv/
-*.sqlite3
-data/
-telegram_bot_media/
-.git/
-.idea/
-.DS_Store
+env/
 
-=======
-.env
-logs/
-.tmp/
-.temp/
->>>>>>> bba2b88fb528a473ace533b0d53555aa4b2525a4
+telegram_bot_media/
+tmp/
+temp/
+
+docker-compose.override.yml

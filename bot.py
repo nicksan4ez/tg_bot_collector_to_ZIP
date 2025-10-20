@@ -28,6 +28,7 @@ ZIP_NAME = os.getenv("ZIP_NAME", "Monitor.zip")
 # support both ARCHIVE_DELAY and legacy DEBOUNCE_SECONDS env var
 ARCHIVE_DELAY = float(os.getenv("ARCHIVE_DELAY", os.getenv("DEBOUNCE_SECONDS", "5")))
 VIDEO_EXTS = {".mp4", ".mov", ".mkv", ".avi", ".webm", ".m4v", ".mpeg", ".mpg", ".ogv"}
+INVALID_FILENAME_CHARS = set('<>:"/\\|?*')
 
 if not BOT_TOKEN:
     raise SystemExit("BOT_TOKEN required in .env")
@@ -65,16 +66,25 @@ def _mime_to_ext(mime: str) -> str:
     return ""
 
 def sanitize_preserve_visual(name: str) -> str:
-    if name is None:
+    if not name:
         return ""
-    n = str(name)
-    n = n.replace("\x00", "")
-    n = n.replace("/", "∕").replace("\\", "∕")
-    replacements = {":": "：", "*": "∗", "?": "？", '"': "＂", "<": "＜", ">": "＞", "|": "∣"}
-    for k, v in replacements.items():
-        n = n.replace(k, v)
-    n = n.replace("\r", " ").replace("\n", " ")
-    return n.strip()
+
+    normalized: list[str] = []
+    for ch in str(name):
+        if ch == "\x00":
+            continue
+        if ch in INVALID_FILENAME_CHARS:
+            normalized.append("_")
+            continue
+        if ch in ("\r", "\n", "\t"):
+            normalized.append(" ")
+            continue
+        normalized.append(ch)
+
+    sanitized = "".join(normalized).strip()
+    if sanitized.endswith((" ", ".")):
+        sanitized = sanitized.rstrip(" .")
+    return sanitized
 
 def make_unique_filepath(dirpath: Path, desired_name: str) -> Path:
     desired = Path(desired_name)

@@ -1,7 +1,2 @@
-<<<<<<< HEAD
 python-telegram-bot[job-queue]==21.8
 python-dotenv>=1.0.0
-=======
-aiogram==3.4.1
-python-dotenv==1.0.1
->>>>>>> bba2b88fb528a473ace533b0d53555aa4b2525a4

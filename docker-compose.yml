@@ -1,26 +1,13 @@
-<<<<<<< HEAD
-version: '3.8'
+version: "3.9"
+
 services:
-  monitorbot:
+  tg_bot_collector:
     build: .
+    image: tg-bot-collector:latest
+    restart: unless-stopped
     env_file:
       - .env
     environment:
       - TMP_ROOT=/data/tmp
-      - ZIP_NAME=${ZIP_NAME:-Monitor.zip}
-      - ARCHIVE_DELAY=${ARCHIVE_DELAY:-5}
     volumes:
       - ./data:/data
-    restart: unless-stopped
-
-=======
-﻿services:
-  tg_bot_collector_to_ZIP:
-    build: .
-    image: tg-archive-bot:latest
-    restart: unless-stopped
-    env_file: .env
-    volumes:
-      - ./logs:/app/logs
-      - ./temp:/app/temp
->>>>>>> bba2b88fb528a473ace533b0d53555aa4b2525a4
