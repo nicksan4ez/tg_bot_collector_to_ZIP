@@ -7,7 +7,5 @@ services:
     restart: unless-stopped
     env_file:
       - .env
-    environment:
-      - TMP_ROOT=/data/tmp
     volumes:
       - ./data:/data
