@@ -25,6 +25,11 @@ BOT_TOKEN = os.getenv("BOT_TOKEN")
 ALLOWED_USERS = os.getenv("ALLOWED_USERS", "")
 TMP_ROOT_ENV = os.getenv("TMP_ROOT", "telegram_bot_media")
 ZIP_NAME = os.getenv("ZIP_NAME", "Monitor.zip")
+# максимальный размер части архива в мегабайтах перед отправкой
+ARCHIVE_SIZE_LIMIT_MB = float(os.getenv("ARCHIVE_SIZE_LIMIT_MB", "48"))
+if ARCHIVE_SIZE_LIMIT_MB <= 0:
+    raise SystemExit("ARCHIVE_SIZE_LIMIT_MB must be greater than zero")
+ARCHIVE_SIZE_LIMIT_BYTES = int(ARCHIVE_SIZE_LIMIT_MB * 1024 * 1024)
 # support both ARCHIVE_DELAY and legacy DEBOUNCE_SECONDS env var
 ARCHIVE_DELAY = float(os.getenv("ARCHIVE_DELAY", os.getenv("DEBOUNCE_SECONDS", "5")))
 VIDEO_EXTS = {".mp4", ".mov", ".mkv", ".avi", ".webm", ".m4v", ".mpeg", ".mpg", ".ogv"}
@@ -96,6 +101,28 @@ def make_unique_filepath(dirpath: Path, desired_name: str) -> Path:
         candidate = dirpath / f"{base} ({i}){ext}"
         i += 1
     return candidate
+
+def split_file(path: Path, max_bytes: int) -> list[Path]:
+    """Разбивает файл на части размером не больше max_bytes и возвращает список путей."""
+    if max_bytes <= 0:
+        return [path]
+
+    parts: list[Path] = []
+    with path.open("rb") as source:
+        index = 1
+        while True:
+            chunk = source.read(max_bytes)
+            if not chunk:
+                break
+            part_path = path.with_name(f"{path.name}.{index:03d}")
+            with part_path.open("wb") as target:
+                target.write(chunk)
+            parts.append(part_path)
+            index += 1
+
+    if parts:
+        path.unlink(missing_ok=True)
+    return parts or [path]
 
 async def handle_media(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.effective_user:
@@ -278,10 +305,37 @@ async def _finalize_after_delay(uid: int, ts: float, chat_id: int, context: Cont
                             continue
                         zf.write(f, arcname=f.name)
 
-            # send archive
-            with zip_path.open("rb") as fh:
-                await context.bot.send_document(chat_id=chat_id, document=InputFile(fh), filename=ZIP_NAME)
-            logger.info("Sent archive to chat %s for user %s", chat_id, uid)
+            # проверяем размер и делим архив, если нужно
+            try:
+                size_bytes = zip_path.stat().st_size
+            except OSError:
+                size_bytes = 0
+
+            if ARCHIVE_SIZE_LIMIT_BYTES > 0 and size_bytes > ARCHIVE_SIZE_LIMIT_BYTES:
+                part_paths = split_file(zip_path, ARCHIVE_SIZE_LIMIT_BYTES)
+                logger.info(
+                    "Archive for user %s exceeds limit (%s > %s), split into %s parts",
+                    uid,
+                    size_bytes,
+                    ARCHIVE_SIZE_LIMIT_BYTES,
+                    len(part_paths),
+                )
+            else:
+                part_paths = [zip_path]
+
+            total_parts = len(part_paths)
+            for index, part_path in enumerate(part_paths, start=1):
+                caption = "Архив готов."
+                if total_parts > 1:
+                    caption = f"Архив, часть {index}/{total_parts}. Скачайте все части по порядку."
+                with part_path.open("rb") as fh:
+                    await context.bot.send_document(
+                        chat_id=chat_id,
+                        document=InputFile(fh),
+                        filename=part_path.name,
+                        caption=caption,
+                    )
+                logger.info("Sent archive part %s/%s to chat %s for user %s", index, total_parts, chat_id, uid)
         except Exception as e:
             logger.exception("Failed to send archive for user %s: %s", uid, e)
         finally:
