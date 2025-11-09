@@ -14,8 +14,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-ENV TMP_ROOT=/data/tmp
-
 RUN useradd --create-home --shell /usr/sbin/nologin bot \
     && mkdir -p /data \
     && chown -R bot:bot /app /data
