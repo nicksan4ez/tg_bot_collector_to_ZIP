@@ -13,6 +13,7 @@ from typing import List, Optional
 from dotenv import load_dotenv
 from telegram import Update, InputFile
 from telegram.ext import ApplicationBuilder, ContextTypes, MessageHandler, filters
+from telegram.error import BadRequest
 
 logging.basicConfig(
     format="%(asctime)s - %(levelname)s - %(name)s - %(message)s",
@@ -242,6 +243,18 @@ async def handle_media(update: Update, context: ContextTypes.DEFAULT_TYPE):
             else:
                 logger.warning("File expected but not found after download for user %s: %s", uid, saved_path)
 
+        except BadRequest as e:
+            logger.warning("BadRequest while downloading media for user %s: %s", uid, e)
+            if "too big" in (e.message or "").lower():
+                display_name = media.file_name or (msg.caption or "файл")
+                if chat_id:
+                    try:
+                        await context.bot.send_message(
+                            chat_id=chat_id,
+                            text=f"Пропустил видео {display_name} (больше лимита), скачай вручную",
+                        )
+                    except Exception:
+                        logger.exception("Failed to notify user %s about oversized file", uid)
         except Exception as e:
             logger.exception("Error downloading media for user %s: %s", uid, e)
         finally:
