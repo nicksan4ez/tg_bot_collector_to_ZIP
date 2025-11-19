@@ -4,6 +4,8 @@
 import os
 import asyncio
 import logging
+import re
+import unicodedata
 import zipfile
 import shutil
 import time
@@ -35,6 +37,19 @@ ARCHIVE_SIZE_LIMIT_BYTES = int(ARCHIVE_SIZE_LIMIT_MB * 1024 * 1024)
 ARCHIVE_DELAY = float(os.getenv("ARCHIVE_DELAY", os.getenv("DEBOUNCE_SECONDS", "5")))
 VIDEO_EXTS = {".mp4", ".mov", ".mkv", ".avi", ".webm", ".m4v", ".mpeg", ".mpg", ".ogv"}
 INVALID_FILENAME_CHARS = set('<>:"/\\|?*')
+QUOTE_CHARS = {'"', "«", "»", "“", "”"}
+WHITESPACE_RE = re.compile(r"\s+")
+HTML_TAG_RE = re.compile(r"<[^>]+>")
+EMOJI_RANGES = (
+    (0x1F300, 0x1F5FF),
+    (0x1F600, 0x1F64F),
+    (0x1F680, 0x1F6FF),
+    (0x1F900, 0x1F9FF),
+    (0x1FA70, 0x1FAFF),
+    (0x2600, 0x27BF),
+    (0x1F1E6, 0x1F1FF),  # региональные символы / флаги
+)
+VARIATION_SELECTORS = {0xFE0E, 0xFE0F}
 
 if not BOT_TOKEN:
     raise SystemExit("BOT_TOKEN required in .env")
@@ -71,26 +86,45 @@ def _mime_to_ext(mime: str) -> str:
     if "png" in mime: return ".png"
     return ""
 
+def _is_emoji(cp: int) -> bool:
+    if cp in VARIATION_SELECTORS:
+        return True
+    for start, end in EMOJI_RANGES:
+        if start <= cp <= end:
+            return True
+    return False
+
 def sanitize_preserve_visual(name: str) -> str:
     if not name:
         return ""
 
+    normalized_text = unicodedata.normalize("NFKC", str(name))
+    normalized_text = HTML_TAG_RE.sub(" ", normalized_text)
+
     normalized: list[str] = []
-    for ch in str(name):
+    for ch in normalized_text:
         if ch == "\x00":
             continue
+        code_point = ord(ch)
+        if _is_emoji(code_point):
+            continue
         if ch in INVALID_FILENAME_CHARS:
+            if ch in QUOTE_CHARS:
+                continue
             normalized.append("_")
             continue
-        if ch in ("\r", "\n", "\t"):
+        if ch.isspace():
             normalized.append(" ")
             continue
         normalized.append(ch)
 
-    sanitized = "".join(normalized).strip()
+    sanitized = WHITESPACE_RE.sub(" ", "".join(normalized)).strip()
+    while ".." in sanitized:
+        sanitized = sanitized.replace("..", "_")
+    sanitized = sanitized.lstrip(". ")
     if sanitized.endswith((" ", ".")):
         sanitized = sanitized.rstrip(" .")
-    return sanitized
+    return sanitized or "file"
 
 def make_unique_filepath(dirpath: Path, desired_name: str) -> Path:
     desired = Path(desired_name)
@@ -173,12 +207,13 @@ async def handle_media(update: Update, context: ContextTypes.DEFAULT_TYPE):
             if not ext:
                 ext = _mime_to_ext(getattr(media, "mime_type", "") or "")
 
-            ext_lower = ext.lower()
-            mime = getattr(media, "mime_type", "") or ""
-            if media_file_name and (mime.startswith("video/") or ext_lower in VIDEO_EXTS):
+            caption_text = (msg.caption or "").strip()
+            if caption_text:
+                raw_name = caption_text
+            elif media_file_name:
                 raw_name = media_file_name
             else:
-                raw_name = msg.caption or media_file_name or "file"
+                raw_name = "file"
             safe_base = sanitize_preserve_visual(raw_name)
             # ensure we append extension if known and not already present
             if ext and not safe_base.lower().endswith(ext.lower()):
