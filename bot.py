@@ -23,6 +23,24 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+class _RateLimitFilter(logging.Filter):
+    """Пропускает записи не чаще указанного интервала (секунды)."""
+
+    def __init__(self, min_interval: float) -> None:
+        super().__init__()
+        self.min_interval = min_interval
+        self._last = 0.0
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        now = time.monotonic()
+        if now - self._last < self.min_interval:
+            return False
+        self._last = now
+        return True
+
+# ограничиваем шумный вывод httpx
+logging.getLogger("httpx").addFilter(_RateLimitFilter(60.0))
+
 load_dotenv()
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 ALLOWED_USERS = os.getenv("ALLOWED_USERS", "")
