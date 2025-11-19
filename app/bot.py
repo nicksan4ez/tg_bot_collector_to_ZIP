@@ -117,6 +117,9 @@ def _build_keyboard() -> InlineKeyboardMarkup:
 def _sanitize_filename(name: str) -> str:
     sanitized = []
     for char in name:
+        if char == ":":
+            sanitized.append(" -")
+            continue
         if char in INVALID_FILENAME_CHARS:
             sanitized.append("_")
         else:
@@ -292,7 +295,7 @@ async def _process_archive(callback: CallbackQuery, state: SessionState) -> None
 
         if not downloaded_files:
             await message.answer(
-                "Не удалось скачать ни один файл. Попробуйте повторно отправить сообщения."
+                "❌Не удалось скачать ни один файл. Попробуйте повторно отправить сообщения."
             )
             return
 
@@ -317,10 +320,10 @@ async def _process_archive(callback: CallbackQuery, state: SessionState) -> None
 
         total_parts = len(part_paths)
         for index, part_path in enumerate(part_paths, start=1):
-            caption_text = "Готово. Вот ваш архив."
+            caption_text = "✅Готово"
             if total_parts > 1:
                 caption_text = (
-                    f"Готово. Архив том {index}/{total_parts}. Загрузите все тома перед распаковкой."
+                    f"✅Готово. Архив том {index}/{total_parts}. Загрузите все тома перед распаковкой."
                 )
             await message.answer_document(
                 document=FSInputFile(part_path),
@@ -329,7 +332,7 @@ async def _process_archive(callback: CallbackQuery, state: SessionState) -> None
 
         for caption in failed_captions:
             await message.answer(
-                f"Не удалось скачать файл \"{caption}\", скачайте его вручную."
+                f"❌Не удалось скачать файл \"{caption}\", скачайте его вручную."
             )
     finally:
         shutil.rmtree(work_dir, ignore_errors=True)
