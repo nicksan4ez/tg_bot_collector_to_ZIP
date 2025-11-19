@@ -1,9 +1,26 @@
 from __future__ import annotations
 
 import logging
+import time
 from logging import Logger
 
 from .settings import Settings
+
+
+class RateLimitFilter(logging.Filter):
+    """Допускает лог не чаще, чем раз в min_interval секунд."""
+
+    def __init__(self, min_interval: float) -> None:
+        super().__init__()
+        self.min_interval = min_interval
+        self._last_emit = 0.0
+
+    def filter(self, record: logging.LogRecord) -> bool:  # noqa: D401
+        now = time.monotonic()
+        if now - self._last_emit < self.min_interval:
+            return False
+        self._last_emit = now
+        return True
 
 
 def setup_logging(settings: Settings) -> Logger:
@@ -28,6 +45,10 @@ def setup_logging(settings: Settings) -> Logger:
 
     root_logger.addHandler(stream_handler)
     root_logger.addHandler(file_handler)
+
+    # Ограничиваем шумные запросы httpx до одного сообщения в минуту
+    httpx_logger = logging.getLogger("httpx")
+    httpx_logger.addFilter(RateLimitFilter(60.0))
 
     root_logger.debug("Logging has been configured")
     return root_logger
