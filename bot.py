@@ -58,16 +58,6 @@ INVALID_FILENAME_CHARS = set('<>:"/\\|?*')
 QUOTE_CHARS = {'"', "«", "»", "“", "”"}
 WHITESPACE_RE = re.compile(r"\s+")
 HTML_TAG_RE = re.compile(r"<[^>]+>")
-EMOJI_RANGES = (
-    (0x1F300, 0x1F5FF),
-    (0x1F600, 0x1F64F),
-    (0x1F680, 0x1F6FF),
-    (0x1F900, 0x1F9FF),
-    (0x1FA70, 0x1FAFF),
-    (0x2600, 0x27BF),
-    (0x1F1E6, 0x1F1FF),  # региональные символы / флаги
-)
-VARIATION_SELECTORS = {0xFE0E, 0xFE0F}
 
 if not BOT_TOKEN:
     raise SystemExit("BOT_TOKEN required in .env")
@@ -104,14 +94,6 @@ def _mime_to_ext(mime: str) -> str:
     if "png" in mime: return ".png"
     return ""
 
-def _is_emoji(cp: int) -> bool:
-    if cp in VARIATION_SELECTORS:
-        return True
-    for start, end in EMOJI_RANGES:
-        if start <= cp <= end:
-            return True
-    return False
-
 def sanitize_preserve_visual(name: str) -> str:
     if not name:
         return ""
@@ -123,8 +105,8 @@ def sanitize_preserve_visual(name: str) -> str:
     for ch in normalized_text:
         if ch == "\x00":
             continue
-        code_point = ord(ch)
-        if _is_emoji(code_point):
+        if ch == ":":
+            normalized.append(" -")
             continue
         if ch in INVALID_FILENAME_CHARS:
             if ch in QUOTE_CHARS:
