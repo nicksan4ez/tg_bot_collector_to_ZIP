@@ -65,6 +65,8 @@ class VideoPayload:
     caption: Optional[str]
     mime_type: Optional[str]
     original_file_name: Optional[str]
+    message_id: int
+    chat_id: int
 
 
 @dataclass(slots=True)
@@ -201,6 +203,8 @@ async def handle_video(message: Message) -> None:
         caption=message.caption,
         mime_type=message.video.mime_type,
         original_file_name=message.video.file_name,
+        message_id=message.message_id,
+        chat_id=message.chat.id,
     )
     state.videos.append(payload)
     logger.info(
@@ -269,7 +273,7 @@ async def _process_archive(callback: CallbackQuery, state: SessionState) -> None
     user_id = callback.from_user.id if callback.from_user else 0
     work_dir = Path(tempfile.mkdtemp(dir=settings.temp_root))
     downloaded_files: List[Tuple[Path, str]] = []
-    failed_captions: List[str] = []
+    failed_payloads: List[Tuple[VideoPayload, str]] = []
     existing_names: Set[str] = set()
     try:
         for index, payload in enumerate(state.videos, start=1):
@@ -291,7 +295,23 @@ async def _process_archive(callback: CallbackQuery, state: SessionState) -> None
                     payload.file_id,
                     user_id,
                 )
-                failed_captions.append(caption)
+                failed_payloads.append((payload, caption))
+
+        if failed_payloads:
+            await message.answer("Это не скачал, отправь отдельно:")
+            for failed_payload, caption in failed_payloads:
+                try:
+                    await message.bot.send_video(
+                        chat_id=failed_payload.chat_id,
+                        video=failed_payload.file_id,
+                        caption=failed_payload.caption,
+                    )
+                except Exception:  # noqa: BLE001 - log and continue with next file
+                    logger.exception(
+                        "Failed to resend undownloaded video file_id=%s for user_id=%s",
+                        failed_payload.file_id,
+                        user_id,
+                    )
 
         if not downloaded_files:
             await message.answer(
@@ -330,10 +350,6 @@ async def _process_archive(callback: CallbackQuery, state: SessionState) -> None
                 caption=caption_text,
             )
 
-        for caption in failed_captions:
-            await message.answer(
-                f"❌Не удалось скачать файл \"{caption}\", скачайте его вручную."
-            )
     finally:
         shutil.rmtree(work_dir, ignore_errors=True)
         logger.debug("Cleaned work directory %s for user_id=%s", work_dir, user_id)
