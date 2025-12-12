@@ -9,6 +9,7 @@ import unicodedata
 import zipfile
 import shutil
 import time
+from dataclasses import dataclass
 from pathlib import Path
 from typing import List, Optional
 
@@ -69,6 +70,12 @@ if not TMP_ROOT.is_absolute():
 
 ALLOWED_USERS_SET = {int(x.strip()) for x in ALLOWED_USERS.split(",") if x.strip().isdigit()}
 
+@dataclass
+class OversizedMedia:
+    file_id: str
+    caption: str
+    is_video: bool
+
 class UserState:
     def __init__(self, uid: int, chat_id: int):
         self.uid = uid
@@ -76,6 +83,7 @@ class UserState:
         self.dirpath = TMP_ROOT / f"user_{uid}"
         self.dirpath.mkdir(parents=True, exist_ok=True)
         self.saved_files: List[Path] = []
+        self.oversized_media: List[OversizedMedia] = []
         self.in_progress = 0
         self.last_ts = 0.0
         self.lock = asyncio.Lock()
@@ -281,15 +289,17 @@ async def handle_media(update: Update, context: ContextTypes.DEFAULT_TYPE):
         except BadRequest as e:
             logger.warning("BadRequest while downloading media for user %s: %s", uid, e)
             if "too big" in (e.message or "").lower():
-                display_name = media.file_name or (msg.caption or "файл")
-                if chat_id:
-                    try:
-                        await context.bot.send_message(
-                            chat_id=chat_id,
-                            text=f"Пропустил видео {display_name} (больше лимита), скачай вручную",
+                caption_text = (msg.caption or media.file_name or "").strip()
+                is_video = getattr(media, "duration", None) is not None
+                async with state.lock:
+                    state.oversized_media.append(
+                        OversizedMedia(
+                            file_id=media.file_id,
+                            caption=caption_text,
+                            is_video=is_video,
                         )
-                    except Exception:
-                        logger.exception("Failed to notify user %s about oversized file", uid)
+                    )
+                logger.info("Queued oversized media for user %s", uid)
         except Exception as e:
             logger.exception("Error downloading media for user %s: %s", uid, e)
         finally:
@@ -332,6 +342,21 @@ async def _finalize_after_delay(uid: int, ts: float, chat_id: int, context: Cont
                 return
             files = list(state.saved_files)
             dirpath = state.dirpath
+            oversized = list(state.oversized_media)
+
+        if oversized and chat_id:
+            try:
+                await context.bot.send_message(chat_id=chat_id, text="Это не скачал, отправь отдельно:")
+            except Exception:
+                logger.exception("Failed to send oversized header for user %s", uid)
+            for item in oversized:
+                try:
+                    if item.is_video:
+                        await context.bot.send_video(chat_id=chat_id, video=item.file_id, caption=item.caption or None)
+                    else:
+                        await context.bot.send_document(chat_id=chat_id, document=item.file_id, caption=item.caption or None)
+                except Exception:
+                    logger.exception("Failed to resend oversized file for user %s", uid)
 
         if not files:
             try:
